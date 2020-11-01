@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using ApiFirstYTry.Data;
+using ApiFirstYTry.Dtos;
 using ApiFirstYTry.Models;
+using AutoMapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,27 +16,65 @@ namespace ApiFirstYTry.Controllers
     public class CommandsController : ControllerBase
     {
         private readonly ICommanderRepo _repo;
+        private readonly IMapper _mapper;
 
-        public CommandsController(ICommanderRepo repo)
+        public CommandsController(ICommanderRepo repo, IMapper mapper)
         {
             _repo = repo;
+            _mapper = mapper;
         }
 
         [HttpGet]
-        public ActionResult<IEnumerable<Command>>GetAllCommands()
+        public ActionResult<IEnumerable<CommandReadDto>>GetAllCommands()
         {
-            var commands = _repo.GetAppCommands();
+            var commands = _repo.GetAllCommands();
 
-            return Ok(commands);
+            return Ok(_mapper.Map<IEnumerable<CommandReadDto>>(commands));
         }
 
-        [HttpGet("{id}")]
-        public ActionResult<Command>GetCommandById(int id)
+        [HttpGet("{id}", Name ="GetCommandById")]
+        public ActionResult<CommandReadDto>GetCommandById(int id)
         {
             var command = _repo.GetCommandById(id);
+            if (command == null)
+            {
+                return NotFound();
+            }
 
-            return command;
+            return Ok(_mapper.Map<CommandReadDto>(command));
         }
 
+        [HttpPost]
+        public ActionResult<CommandReadDto>CreateCommand(CommandCreateDto commandCreateDto)
+        {
+            var command = _mapper.Map<Command>(commandCreateDto);
+            _repo.CreateCommand(command);
+            _repo.SaveChanges();
+
+            var commandReadDto = _mapper.Map<CommandReadDto>(command);
+
+            return CreatedAtRoute("GetCommandById", new { Id = commandReadDto.Id }, commandReadDto);
+            //return Ok(commandReadDto);
+        }
+
+        [HttpPut("{id}")]
+        public ActionResult UpdateCommand(int id, CommandUpdateDto commandUpdateDto)
+        {
+            var commands = _repo.GetCommandById(id);
+            if (commands == null)
+            {
+                return NotFound();
+            }
+
+            _mapper.Map(commandUpdateDto, commands);
+
+            _repo.UpdateCommand(commands);
+
+            _repo.SaveChanges();
+
+            return NoContent();
+
+
+        }
     }
 }
