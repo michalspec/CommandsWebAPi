@@ -7,6 +7,7 @@ using ApiFirstYTry.Dtos;
 using ApiFirstYTry.Models;
 using AutoMapper;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ApiFirstYTry.Controllers
@@ -73,8 +74,48 @@ namespace ApiFirstYTry.Controllers
             _repo.SaveChanges();
 
             return NoContent();
+        }
 
+        [HttpPatch("{id}")]
+        public ActionResult PartialCommendUpdate(int id, JsonPatchDocument<CommandUpdateDto>patchDocument)
+        {
+            var command = _repo.GetCommandById(id);
+            if(command == null)
+            {
+                return NotFound();
+            }
 
+            var commandToPatch = _mapper.Map<CommandUpdateDto>(command);
+
+            patchDocument.ApplyTo(commandToPatch, ModelState);
+            
+            if(!TryValidateModel(commandToPatch))
+            {
+                return ValidationProblem(ModelState);
+            }
+
+            _mapper.Map(commandToPatch, command);
+
+            _repo.UpdateCommand(command);
+            _repo.SaveChanges();
+
+            return NoContent();
+        }
+
+        [HttpDelete("{id}")]
+        public ActionResult DeleteCommand(int id)
+        {
+            var command = _repo.GetCommandById(id);
+            if(command == null)
+            {
+                return NotFound();
+            }
+
+            _repo.DeleteCommand(command);
+
+            _repo.SaveChanges();
+
+            return NoContent();
         }
     }
 }
